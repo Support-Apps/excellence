@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מעבד קובצי אקסל ללקוחות - Excel Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS (xlsx) CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Assistant', sans-serif;
+            background-color: #FAFAFA;
+            color: #1A1A1A;
+        }
+
+        .bg-blush { background-color: #FFF0F5; }
+        .bg-blush-soft { background-color: #FDF4F7; }
+        .border-blush { border-color: #F8C8DC; }
+        .text-blush { color: #E0829D; }
+        
+        .border-gold { border-color: #E2CA76; }
+        .bg-gold { background-color: #D4AF37; }
+        .text-gold { color: #C5A059; }
+
+        .btn-luxury {
+            background: linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);
+            color: #FFFFFF;
+            transition: all 0.3s ease;
+        }
+        .btn-luxury:hover {
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25);
+            border-color: #D4AF37;
+        }
+
+        .drag-active {
+            border-color: #D4AF37 !important;
+            background-color: #FFFDF8 !important;
+            transform: scale(1.005);
+        }
+
+        /* Float animation for illustrations */
+        @keyframes subtleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+        .animate-float {
+            animation: subtleFloat 4s ease-in-out infinite;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FAFAFA;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #E5E7EB;
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #D4AF37;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col tracking-wide">
+
+    <!-- Top Bar with בס"ד -->
+    <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-3 flex justify-between items-center text-xs text-slate-400 font-medium select-none">
+        <span class="tracking-widest text-[13px] text-slate-500 font-serif font-bold">בס״ד</span>
+        <span class="text-[11px] tracking-wider uppercase text-slate-400">Excel Processing Studio</span>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-30 mt-1">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-4 space-x-reverse">
+                <div class="w-12 h-12 rounded-2xl bg-blush border border-blush/60 flex items-center justify-center text-gold shadow-sm relative">
+                    <!-- Premium Illustrated Badge Icon -->
+                    <svg class="w-7 h-7 text-[#C5A059]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <path d="m9 15 2 2 4-4" stroke="#E0829D" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-semibold text-slate-900 tracking-tight">מעבד קובצי אקסל ללקוחות</h1>
+                    <p class="text-xs text-slate-400 font-light">סידור מימין לשמאל (RTL) • הפיכת מינוסים לחיובי • הפרדת חשבוניות</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="file-status-badge" class="hidden text-xs font-medium px-3.5 py-1.5 rounded-full bg-blush-soft text-slate-700 border border-blush/60 flex items-center gap-2 shadow-xs">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    הקובץ מעובד ומוכן לשליחה ללקוחות
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+
+        <!-- Upload & Settings Zone -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Drag and Drop Box with Custom Vector Illustration -->
+            <div class="lg:col-span-2">
+                <div id="drop-zone" class="border border-dashed border-slate-300 rounded-3xl p-8 bg-white text-center transition-all duration-300 hover:border-gold hover:bg-blush-soft/20 flex flex-col items-center justify-center min-h-[260px] shadow-sm relative group cursor-pointer" onclick="document.getElementById('file-input').click()">
+                    <input type="file" id="file-input" accept=".xlsx, .xls, .csv" class="hidden">
+                    
+                    <!-- Elegant Custom Upload Illustration -->
+                    <div class="relative mb-4 animate-float">
+                        <div class="w-20 h-20 bg-blush/60 rounded-full flex items-center justify-center border border-blush transition-transform duration-300 group-hover:scale-105">
+                            <svg class="w-10 h-10 text-[#C5A059]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="4" fill="#FFFFFF" stroke="#E2CA76" stroke-width="1.5"/>
+                                <path d="M8 10h8M8 14h5" stroke="#C5A059" stroke-linecap="round"/>
+                                <circle cx="17" cy="15" r="4" fill="#FFF0F5" stroke="#E0829D" stroke-width="1.5"/>
+                                <path d="M17 13v4M15 15h4" stroke="#E0829D" stroke-linecap="round" stroke-width="1.5"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <h2 class="text-base font-medium text-slate-800 mb-1">גרירת קובץ אקסל לכאן או לחיצה לבחירה</h2>
+                    <p class="text-xs text-slate-400 mb-5 font-light">מתקן אוטומטית כפולות, מינוסים וכיוון תצוגה בלחיצה אחת</p>
+                    
+                    <button type="button" class="px-5 py-2.5 btn-luxury text-xs font-medium rounded-xl border border-transparent shadow-sm">
+                        בחירת קובץ מהמחשב
+                    </button>
+
+                    <p id="selected-filename" class="mt-4 text-xs font-medium text-[#C5A059] hidden flex items-center gap-1.5 bg-blush-soft px-3 py-1.5 rounded-full border border-blush/50">
+                        <i data-lucide="file-check" class="w-4 h-4 text-[#E0829D]"></i>
+                        <span></span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Auto-Processing Options Panel -->
+            <div class="bg-white p-7 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="font-medium text-slate-800 text-sm flex items-center gap-2">
+                            <svg class="w-4 h-4 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"/></svg>
+                            הגדרות עיבוד ללקוחות
+                        </h3>
+                        <span class="w-2 h-2 rounded-full bg-gold/60"></span>
+                    </div>
+
+                    <div class="space-y-3.5 text-xs">
+                        <label class="flex items-center gap-3 text-slate-600 cursor-pointer select-none">
+                            <input type="checkbox" id="opt-rtl" checked class="rounded border-slate-300 text-slate-900 focus:ring-gold w-4 h-4 accent-slate-900">
+                            <span>תצוגה מימין לשמאל (RTL)</span>
+                        </label>
+                        <label class="flex items-center gap-3 text-slate-600 cursor-pointer select-none">
+                            <input type="checkbox" id="opt-abs" checked class="rounded border-slate-300 text-slate-900 focus:ring-gold w-4 h-4 accent-slate-900">
+                            <span>המרת כמויות/סכומים שליליים לחיוביים</span>
+                        </label>
+                        <label class="flex items-center gap-3 text-slate-600 cursor-pointer select-none">
+                            <input type="checkbox" id="opt-separate" checked class="rounded border-slate-300 text-slate-900 focus:ring-gold w-4 h-4 accent-slate-900">
+                            <span>הוספת שורת הפרדה בין חשבוניות</span>
+                        </label>
+                    </div>
+
+                    <hr class="my-5 border-slate-100">
+
+                    <!-- Invoice Column Selector -->
+                    <div class="space-y-2">
+                        <label for="invoice-col-select" class="block text-xs font-medium text-slate-500">עמודת מספרי חשבונית:</label>
+                        <select id="invoice-col-select" disabled class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 focus:outline-none focus:border-gold transition-colors">
+                            <option value="">(יימצא אוטומטית לאחר העלאת קובץ)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button id="download-btn" disabled class="mt-6 w-full py-3 bg-blush hover:bg-[#F9E2EB] text-slate-800 border border-blush rounded-xl text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-sm">
+                    <i data-lucide="download" class="w-4 h-4 text-gold"></i>
+                    הורדת קובץ מתוקן ללקוחות (.xlsx)
+                </button>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div id="preview-section" class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden hidden">
+            <!-- Tabs & Header -->
+            <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-2 bg-slate-100/70 p-1 rounded-xl">
+                    <button id="tab-processed" class="px-4 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-900 shadow-sm flex items-center gap-1.5 transition">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-gold"></i>
+                        קובץ מתוקן ללקוחות
+                    </button>
+                    <button id="tab-original" class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1.5 transition">
+                        <i data-lucide="history" class="w-3.5 h-3.5"></i>
+                        קובץ מקורי
+                    </button>
+                </div>
+                <div class="text-xs text-slate-400 font-light" id="rows-counter">
+                    מציג 0 שורות
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="overflow-x-auto max-h-[500px]">
+                <table id="preview-table" class="w-full text-right text-xs text-slate-700 border-collapse">
+                    <thead id="table-head" class="sticky top-0 bg-slate-50/90 backdrop-blur-sm text-slate-500 font-medium border-b border-slate-100 z-10">
+                        <!-- Dynamic Columns Header -->
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-50">
+                        <!-- Dynamic Rows Content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Empty State Illustration -->
+        <div id="empty-state" class="bg-white rounded-3xl border border-dashed border-slate-200 p-12 text-center text-slate-400">
+            <div class="w-16 h-16 mx-auto mb-4 bg-blush-soft rounded-full flex items-center justify-center border border-blush/40">
+                <svg class="w-8 h-8 text-[#C5A059]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+                    <rect x="4" y="4" width="16" height="16" rx="3" fill="#FFFFFF"/>
+                    <path d="M8 8h8M8 12h8M8 16h5" stroke="#D4AF37" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <p class="text-xs font-light text-slate-500">העלי קובץ אקסל כדי לראות תצוגה מקדימה והשוואה בלייב לפני השליחה ללקוחות</p>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto bg-white border-t border-slate-100 py-4 text-center text-[11px] text-slate-400 font-light">
+        עיבוד מאובטח מקומי בדפדפן • הקובץ אינו נשלח לשום שרת חיצוני
+    </footer>
+
+    <!-- Main JS Application Logic -->
+    <script>
+        // Global variables
+        let rawWorksheet = null;
+        let originalHeaders = [];
+        let rawJsonData = [];
+        let processedRows = [];
+        let originalRows = [];
+        let activeTab = 'processed'; // 'processed' or 'original'
+
+        // Common column name hints in Hebrew & English
+        const invoiceKeywords = ['חשבונית', 'מספר חשבונית', 'מס חשבונית', 'מספר מסמך', 'מסמך', 'invoice', 'invoice no', 'inv', 'doc num'];
+        const quantityKeywords = ['כמות', 'כמויות', 'סכום', 'סהכ', 'סה"כ', 'מחיר', 'quantity', 'qty', 'amount', 'total', 'price'];
+
+        // DOM elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const selectedFilename = document.getElementById('selected-filename');
+        const previewSection = document.getElementById('preview-section');
+        const emptyState = document.getElementById('empty-state');
+        const tableHead = document.getElementById('table-head');
+        const tableBody = document.getElementById('table-body');
+        const tabProcessed = document.getElementById('tab-processed');
+        const tabOriginal = document.getElementById('tab-original');
+        const downloadBtn = document.getElementById('download-btn');
+        const invoiceColSelect = document.getElementById('invoice-col-select');
+        const rowsCounter = document.getElementById('rows-counter');
+        const fileStatusBadge = document.getElementById('file-status-badge');
+
+        // Checkbox Options
+        const optRtl = document.getElementById('opt-rtl');
+        const optAbs = document.getElementById('opt-abs');
+        const optSeparate = document.getElementById('opt-separate');
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Setup Drag & Drop
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-active');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-active');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length) handleFile(files[0]);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        // Event listeners for processing settings
+        [optRtl, optAbs, optSeparate].forEach(opt => {
+            opt.addEventListener('change', processData);
+        });
+        invoiceColSelect.addEventListener('change', processData);
+
+        // Tab Event Listeners
+        tabProcessed.addEventListener('click', () => {
+            activeTab = 'processed';
+            tabProcessed.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white text-blue-600 shadow-sm border border-slate-200 flex items-center gap-1.5";
+            tabOriginal.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/60 flex items-center gap-1.5";
+            renderTable();
+        });
+
+        tabOriginal.addEventListener('click', () => {
+            activeTab = 'original';
+            tabOriginal.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white text-blue-600 shadow-sm border border-slate-200 flex items-center gap-1.5";
+            tabProcessed.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/60 flex items-center gap-1.5";
+            renderTable();
+        });
+
+        // Main File Handling Function
+        function handleFile(file) {
+            // Update UI file name
+            selectedFilename.querySelector('span').textContent = file.name;
+            selectedFilename.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Pick the first worksheet
+                    const sheetName = workbook.SheetNames[0];
+                    rawWorksheet = workbook.Sheets[sheetName];
+                    
+                    // Read raw JSON rows preserving top header row
+                    const json = XLSX.utils.sheet_to_json(rawWorksheet, { header: 1 });
+                    
+                    if (!json || json.length === 0) {
+                        alert('הקובץ שנבחר ריק או שאינו קביל.');
+                        return;
+                    }
+
+                    // Extract headers in exact original order
+                    originalHeaders = json[0].map(h => h ? String(h).trim() : '');
+                    
+                    // Filter out header row to get data rows
+                    const dataRows = json.slice(1).filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== ''));
+                    
+                    // Map data rows to objects using header keys
+                    rawJsonData = dataRows.map(row => {
+                        const obj = {};
+                        originalHeaders.forEach((header, idx) => {
+                            obj[header] = row[idx] !== undefined ? row[idx] : '';
+                        });
+                        return obj;
+                    });
+
+                    // Populate Invoice Column Select dropdown
+                    populateInvoiceSelect(originalHeaders);
+
+                    // Process Data
+                    processData();
+
+                    // Enable Download Button & UI Status
+                    downloadBtn.disabled = false;
+                    fileStatusBadge.classList.remove('hidden');
+                    previewSection.classList.remove('hidden');
+                    emptyState.classList.add('hidden');
+
+                } catch (err) {
+                    console.error(err);
+                    alert('שגיאה בקריאת קובץ האקסל. יש לוודא שהקובץ תקין.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Auto-detect and populate Invoice Select dropdown
+        function populateInvoiceSelect(headers) {
+            invoiceColSelect.innerHTML = '<option value="">(ללא הפרדת שורות)</option>';
+            let detectedCol = '';
+
+            headers.forEach(header => {
+                if (!header) return;
+                const opt = document.createElement('option');
+                opt.value = header;
+                opt.textContent = header;
+
+                const cleanHeader = header.toLowerCase().trim();
+                if (!detectedCol && invoiceKeywords.some(kw => cleanHeader.includes(kw))) {
+                    detectedCol = header;
+                }
+                invoiceColSelect.appendChild(opt);
+            });
+
+            invoiceColSelect.disabled = false;
+
+            // Set automatically detected column if found
+            if (detectedCol) {
+                invoiceColSelect.value = detectedCol;
+            }
+        }
+
+        // Process Data according to options
+        function processData() {
+            if (!rawJsonData || rawJsonData.length === 0) return;
+
+            const makeAbs = optAbs.checked;
+            const separateInvoices = optSeparate.checked;
+            const selectedInvoiceCol = invoiceColSelect.value;
+
+            originalRows = JSON.parse(JSON.stringify(rawJsonData));
+            processedRows = [];
+
+            let previousInvoiceValue = null;
+
+            rawJsonData.forEach((row, index) => {
+                const newRow = { ...row };
+
+                // Convert Quantity/Amount negative values to absolute (positive) values
+                originalHeaders.forEach(col => {
+                    const cleanHeader = col.toLowerCase().trim();
+                    const val = newRow[col];
+
+                    // Check if value is a number or numeric string
+                    if (makeAbs && val !== undefined && val !== null && val !== '') {
+                        const isNum = !isNaN(val) && isFinite(val);
+                        if (isNum) {
+                            const num = parseFloat(val);
+                            if (num < 0) {
+                                newRow[col] = Math.abs(num);
+                            }
+                        }
+                    }
+                });
+
+                // Separate Invoices with a visual separator row
+                if (separateInvoices && selectedInvoiceCol && newRow[selectedInvoiceCol] !== undefined) {
+                    const currentInvoiceValue = String(newRow[selectedInvoiceCol]).trim();
+                    
+                    if (previousInvoiceValue !== null && currentInvoiceValue !== '' && currentInvoiceValue !== previousInvoiceValue) {
+                        const emptySeparatorRow = {};
+                        originalHeaders.forEach(h => emptySeparatorRow[h] = '');
+                        emptySeparatorRow.__isSeparator = true;
+                        processedRows.push(emptySeparatorRow);
+                    }
+                    if (currentInvoiceValue !== '') {
+                        previousInvoiceValue = currentInvoiceValue;
+                    }
+                }
+
+                processedRows.push(newRow);
+            });
+
+            renderTable();
+        }
+
+        // Render Table Component with Soft Aesthetic Touch
+        function renderTable() {
+            const rows = (activeTab === 'processed') ? processedRows : originalRows;
+            
+            // Build Table Header
+            let headHTML = '<tr>';
+            originalHeaders.forEach(header => {
+                headHTML += `<th class="px-5 py-3.5 border-b border-slate-100 font-medium">${escapeHtml(header)}</th>`;
+            });
+            headHTML += '</tr>';
+            tableHead.innerHTML = headHTML;
+
+            // Build Table Body
+            let bodyHTML = '';
+            let validRowCount = 0;
+
+            rows.forEach((row) => {
+                if (row.__isSeparator) {
+                    // Blank Separator Row styling (Soft Blush/Gold Line)
+                    bodyHTML += `<tr class="bg-blush-soft/50 border-y border-blush/30">`;
+                    originalHeaders.forEach(() => {
+                        bodyHTML += `<td class="px-5 py-1.5 text-center text-gold/60 font-light text-[10px] select-none tracking-widest">--- הפרדת חשבונית ---</td>`;
+                    });
+                    bodyHTML += `</tr>`;
+                } else {
+                    validRowCount++;
+                    bodyHTML += `<tr class="hover:bg-slate-50/80 transition-colors">`;
+                    originalHeaders.forEach(header => {
+                        let val = row[header] !== undefined ? row[header] : '';
+                        let cellStyle = "";
+
+                        // Highlight fixed numbers in processed tab
+                        if (activeTab === 'processed' && typeof val === 'number') {
+                            cellStyle = "font-medium text-slate-800";
+                        }
+
+                        bodyHTML += `<td class="px-5 py-3 border-b border-slate-50 ${cellStyle}">${escapeHtml(val)}</td>`;
+                    });
+                    bodyHTML += `</tr>`;
+                }
+            });
+
+            tableBody.innerHTML = bodyHTML;
+            rowsCounter.textContent = `מציג ${validRowCount} שורות נתונים`;
+        }
+
+        // Export and Download fixed XLSX file
+        downloadBtn.addEventListener('click', () => {
+            if (!processedRows || processedRows.length === 0) return;
+
+            // Clean output data (remove internal __isSeparator flags)
+            const exportData = processedRows.map(row => {
+                const cleanObj = {};
+                originalHeaders.forEach(header => {
+                    cleanObj[header] = row[header] !== undefined ? row[header] : '';
+                });
+                return cleanObj;
+            });
+
+            // Create new worksheet from processed objects
+            const worksheet = XLSX.utils.json_to_sheet(exportData, { header: originalHeaders });
+
+            // Force Sheet Right-To-Left view mode (RTL)
+            if (optRtl.checked) {
+                if (!worksheet['!views']) worksheet['!views'] = [];
+                worksheet['!views'][0] = { RTL: true };
+            }
+
+            // Create new workbook
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "נתונים מתוקנים");
+
+            // Trigger Download
+            const originalName = selectedFilename.querySelector('span').textContent || 'Excel_Fixed.xlsx';
+            const newName = originalName.replace(/\.[^/.]+$/, "") + "_מוכן_ללקוחות.xlsx";
+            XLSX.writeFile(workbook, newName);
+        });
+
+        // Helper function to escape HTML string
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
